@@ -1,0 +1,2303 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Canvas Text & Image Editor</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        text-align: center;
+      }
+      #toolbar {
+        margin: 10px;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 5px;
+      }
+      #toolbar > * {
+        margin: 0 2px;
+      }
+      #canvas-container {
+        border: 1px solid #ccc;
+        display: inline-block;
+      }
+      .tool-group {
+        border: 1px solid #eee;
+        padding: 5px;
+        margin: 2px;
+        border-radius: 4px;
+      }
+      .btn-active {
+        background-color: #ddeeff;
+      }
+
+      /* Canvas size selector */
+      #canvas-sizes {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 15px;
+      }
+      .canvas-size-option {
+        padding: 10px;
+        margin: 0 5px;
+        border: 1px solid #ccc;
+        cursor: pointer;
+        border-radius: 5px;
+      }
+      .canvas-size-option.selected {
+        background-color: #ddeeff;
+        border-color: #99bbee;
+      }
+
+      /* Emoji and shape selectors */
+      .shape-picker,
+      .emoji-picker {
+        display: none;
+        position: absolute;
+        background: white;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        padding: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        z-index: 1000;
+        max-width: 300px;
+        flex-wrap: wrap;
+      }
+      .emoji-btn,
+      .shape-btn {
+        font-size: 20px;
+        width: 40px;
+        height: 40px;
+        margin: 2px;
+        cursor: pointer;
+        border: 1px solid #eee;
+        border-radius: 4px;
+        background: white;
+        transition: all 0.2s;
+      }
+      .emoji-btn:hover,
+      .shape-btn:hover {
+        background: #f0f0f0;
+        transform: scale(1.1);
+      }
+
+      /* Add these to your existing styles */
+      #btn-zoom-in,
+      #btn-zoom-out,
+      #btn-zoom-reset {
+        width: 30px;
+        font-weight: bold;
+      }
+
+      #zoom-level {
+        display: inline-block;
+        min-width: 50px;
+        text-align: center;
+      }
+
+      #btn-undo,
+      #btn-redo {
+        font-size: 18px;
+        min-width: 32px;
+      }
+
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      /* Toolbar category improvements */
+      .toolbar-category {
+        display: flex;
+        flex-direction: column;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        margin: 8px;
+        padding: 6px;
+        background: #f9f9f9;
+        min-width: 150px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      }
+
+      .category-title {
+        font-size: 12px;
+        color: #666;
+        margin-bottom: 6px;
+        text-align: center;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 4px;
+        font-weight: bold;
+        text-transform: uppercase;
+      }
+
+      .tool-group {
+        border: none;
+        margin: 2px 0;
+        padding: 3px;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      #toolbar {
+        background: #f5f5f5;
+        border-radius: 8px;
+        padding: 10px;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      }
+
+      button {
+        margin: 2px;
+        padding: 5px 8px;
+        border-radius: 4px;
+        border: 1px solid #ddd;
+        background: white;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      button:hover {
+        background: #f0f0f0;
+        transform: translateY(-1px);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      }
+
+      .btn-active {
+        background-color: #e6f2ff;
+        border-color: #99c2ff;
+      }
+
+      select,
+      input[type="color"],
+      input[type="number"] {
+        margin: 2px;
+        padding: 3px;
+        border-radius: 4px;
+        border: 1px solid #ddd;
+      }
+
+      /* AI Image Side Panel */
+      #ai-image-sidepanel {
+        display: none;
+        position: fixed;
+        top: 80px;
+        right: 0;
+        width: 220px;
+        height: 80vh;
+        background: #fff;
+        border-left: 1px solid #ccc;
+        box-shadow: -2px 0 8px rgba(0, 0, 0, 0.05);
+        overflow-y: auto;
+        z-index: 100;
+      }
+
+      #ai-image-sidepanel h4 {
+        margin: 10px;
+        font-size: 16px;
+        color: #333;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 8px;
+      }
+
+      #ai-image-sidepanel-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 10px;
+      }
+
+      .ai-image-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background: #f9f9f9;
+        transition: background 0.2s;
+      }
+
+      .ai-image-item:hover {
+        background: #eef;
+      }
+
+      .ai-image-item img {
+        max-width: 100px;
+        max-height: 80px;
+        object-fit: cover;
+        border-radius: 4px;
+        margin-right: 10px;
+      }
+
+      .ai-image-item button {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 6px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+
+      .ai-image-item button:hover {
+        background: #0056b3;
+      }
+
+      /* Layers Panel */
+      #layers-panel {
+        position: fixed;
+        right: 0;
+        top: 60px;
+        width: 220px;
+        height: 80vh;
+        background: #fff;
+        border-left: 1px solid #ccc;
+        box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
+        overflow-y: auto;
+        z-index: 1000;
+        display: block;
+      }
+
+      #layers-panel h4 {
+        margin: 10px;
+        font-size: 16px;
+        color: #333;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 8px;
+      }
+
+      #layers-list {
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .layer-item {
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background: #f9f9f9;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .layer-item.selected {
+        background: #e6f2ff;
+        border-color: #99c2ff;
+      }
+
+      .layer-item button {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 4px 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+
+      .layer-item button:hover {
+        background: #0056b3;
+      }
+
+      /* New styles for layer panel toggle */
+      #layers-panel {
+        position: fixed;
+        left: -200px; /* Initially hidden */
+        top: 60px;
+        width: 220px;
+        background: #fff;
+        border-right: 1px solid #ccc;
+        height: 80vh;
+        overflow: auto;
+        z-index: 1000;
+        transition: left 0.3s ease-in-out;
+        box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+      }
+
+      #layers-panel.expanded {
+        left: 0; /* Show when expanded */
+      }
+
+      #layers-toggle {
+        position: fixed;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 15px 8px;
+        border-radius: 0 8px 8px 0;
+        cursor: pointer;
+        z-index: 1001;
+        font-size: 14px;
+        writing-mode: vertical-rl;
+        text-orientation: mixed;
+        transition: left 0.3s ease-in-out;
+      }
+
+      #layers-toggle.expanded {
+        left: 220px; /* Move with panel */
+      }
+
+      #layers-toggle:hover {
+        background: #0056b3;
+      }
+
+      .layer-item.selected {
+        background: #e0eaff !important;
+        font-weight: bold;
+      }
+
+      #layers-panel::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      #layers-panel {
+        font-size: 14px;
+      }
+
+      .layers-header {
+        padding: 12px 8px;
+        font-weight: bold;
+        border-bottom: 1px solid #eee;
+        background: #f8f9fa;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .layers-collapse-btn {
+        background: none;
+        border: none;
+        font-size: 16px;
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 4px;
+      }
+
+      .layers-collapse-btn:hover {
+        background: #e9ecef;
+      }
+    </style>
+    <!-- Fabric.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.2.4/fabric.min.js"></script>
+  </head>
+  <body>
+    <h2>Canvas Text & Image Editor</h2>
+
+    <!-- Canvas size selector -->
+    <div id="canvas-sizes">
+      <div class="canvas-size-option" data-width="800" data-height="600">
+        800 × 600
+      </div>
+      <div class="canvas-size-option" data-width="1024" data-height="768">
+        1024 × 768
+      </div>
+      <div class="canvas-size-option" data-width="1280" data-height="720">
+        1280 × 720 (HD)
+      </div>
+      <div class="canvas-size-option" data-width="1920" data-height="1080">
+        1920 × 1080 (Full HD)
+      </div>
+      <div class="canvas-size-option" data-width="400" data-height="400">
+        400 × 400 (Square)
+      </div>
+    </div>
+
+    <div id="toolbar">
+      <div class="tool-group">
+        <button id="btn-select" title="Selection Tool">Select</button>
+        <button id="btn-add-text">Add Text</button>
+        <button id="btn-draw">Draw</button>
+        <!-- Add this inside your toolbar div, near the Draw button -->
+        <input
+          type="color"
+          id="draw-color"
+          value="#000000"
+          title="Drawing Color"
+        />
+        <button id="btn-delete">Delete</button>
+      </div>
+
+      <!-- New: Shapes and Emojis -->
+      <div class="tool-group">
+        <button id="btn-show-shapes" title="Add Shapes">Shapes</button>
+        <button id="btn-show-emojis" title="Add Emojis">Emojis</button>
+        <input
+          type="color"
+          id="shape-fill-color"
+          value="#4477aa"
+          title="Shape Fill Color"
+        />
+        <input
+          type="color"
+          id="shape-stroke-color"
+          value="#000000"
+          title="Shape Stroke Color"
+        />
+      </div>
+
+      <!-- New: Group/Ungroup -->
+      <div class="tool-group">
+        <button id="btn-group" title="Group Selected">Group</button>
+        <button id="btn-ungroup" title="Ungroup Selected">Ungroup</button>
+      </div>
+
+      <div class="tool-group">
+        <select id="font-size">
+          <option value="20">20px</option>
+          <option value="30" selected>30px</option>
+          <option value="40">40px</option>
+          <option value="60">60px</option>
+        </select>
+        <input
+          type="color"
+          id="font-color"
+          value="#000000"
+          title="Text Color"
+        />
+        <!-- Add this font-family dropdown -->
+        <select id="font-family" title="Font Family">
+          <option value="Arial, sans-serif">Arial</option>
+          <option value="'Times New Roman', serif">Times New Roman</option>
+          <option value="'Courier New', monospace">Courier New</option>
+          <option value="Georgia, serif">Georgia</option>
+          <option value="Verdana, sans-serif">Verdana</option>
+          <option value="Impact, sans-serif">Impact</option>
+          <option value="'Comic Sans MS', cursive">Comic Sans MS</option>
+          <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+          <option value="'Lucida Console', monaco, monospace">
+            Lucida Console
+          </option>
+          <option value="'Palatino Linotype', 'Book Antiqua', Palatino, serif">
+            Palatino
+          </option>
+        </select>
+      </div>
+
+      <div class="tool-group">
+        <button id="btn-bold" title="Bold">B</button>
+        <button id="btn-italic" title="Italic"><i>I</i></button>
+        <button id="btn-underline" title="Underline"><u>U</u></button>
+        <button id="btn-subscript" title="Subscript">X₂</button>
+        <button id="btn-superscript" title="Superscript">X²</button>
+      </div>
+
+      <div class="tool-group">
+        <button id="btn-align-left" title="Align Left">⫳</button>
+        <button id="btn-align-center" title="Align Center">≡</button>
+        <button id="btn-align-right" title="Align Right">⫴</button>
+      </div>
+
+      <div class="tool-group">
+        <label for="line-spacing">Line:</label>
+        <input
+          type="range"
+          id="line-spacing"
+          min="0.5"
+          max="3"
+          step="0.1"
+          value="1.2"
+          title="Line Spacing"
+        />
+        <label for="char-spacing">Char:</label>
+        <input
+          type="range"
+          id="char-spacing"
+          min="-200"
+          max="800"
+          step="20"
+          value="0"
+          title="Character Spacing"
+        />
+      </div>
+
+      <div class="tool-group">
+        <input type="file" id="img-loader" accept="image/*" />
+        <button id="btn-crop">Crop Selected</button>
+      </div>
+
+      <div class="tool-group">
+        <select id="export-format">
+          <option value="png">PNG</option>
+          <option value="jpg">JPG</option>
+          <option value="jpeg">JPEG</option>
+          <option value="svg">SVG</option>
+          <option value="pdf">PDF</option>
+        </select>
+        <button id="btn-export">Export</button>
+      </div>
+
+      <!-- Add this after the existing tool groups in the toolbar div -->
+      <div class="tool-group">
+        <label>Shadow:</label>
+        <input
+          type="color"
+          id="shadow-color"
+          value="#000000"
+          title="Shadow Color"
+        />
+        <select id="shadow-blur" title="Shadow Blur">
+          <option value="0">No Blur</option>
+          <option value="3">Light</option>
+          <option value="6">Medium</option>
+          <option value="10">Heavy</option>
+        </select>
+        <button id="btn-toggle-shadow" title="Toggle Shadow">S</button>
+      </div>
+
+      <!-- Add this to the Border tool group -->
+      <div class="tool-group">
+        <label>Border:</label>
+        <input
+          type="number"
+          id="border-width"
+          min="0"
+          max="20"
+          value="1"
+          title="Border Width"
+          style="width: 40px"
+        />
+        <select id="border-style" title="Border Style">
+          <option value="solid">Solid</option>
+          <option value="dashed">Dashed</option>
+          <option value="dotted">Dotted</option>
+        </select>
+        <input
+          type="color"
+          id="border-color"
+          value="#000000"
+          title="Border Color"
+        />
+      </div>
+
+      <!-- Add this to your toolbar div -->
+      <div class="tool-group">
+        <button id="btn-zoom-in" title="Zoom In">+</button>
+        <button id="btn-zoom-out" title="Zoom Out">-</button>
+        <button id="btn-zoom-reset" title="Reset Zoom">1:1</button>
+        <span id="zoom-level">100%</span>
+      </div>
+
+      <!-- Add this as a new tool group in the toolbar -->
+      <div class="tool-group">
+        <button id="btn-undo" title="Undo (Ctrl+Z)">↩</button>
+        <button id="btn-redo" title="Redo (Ctrl+Y)">↪</button>
+      </div>
+
+      <!-- Add this inside your toolbar -->
+      <div class="tool-group">
+        <button id="btn-ai-image" title="Generate AI Image">AI Image</button>
+      </div>
+
+      <!-- Add this to your toolbar div -->
+      <div class="tool-group">
+        <label for="bg-color">Background:</label>
+        <input
+          type="color"
+          id="bg-color"
+          value="#ffffff"
+          title="Canvas Background Color"
+        />
+      </div>
+    </div>
+
+    <!-- Shape Picker (initially hidden) -->
+    <div id="shape-picker" class="shape-picker">
+      <button class="shape-btn" data-shape="rect">□</button>
+      <button class="shape-btn" data-shape="circle">○</button>
+      <button class="shape-btn" data-shape="triangle">△</button>
+      <button class="shape-btn" data-shape="line">━</button>
+      <button class="shape-btn" data-shape="polygon">⬡</button>
+      <button class="shape-btn" data-shape="star">★</button>
+      <button class="shape-btn" data-shape="arrow">→</button>
+      <button class="shape-btn" data-shape="heart">♥</button>
+    </div>
+
+    <!-- Emoji Picker (initially hidden) -->
+    <div id="emoji-picker" class="emoji-picker">
+      <button class="emoji-btn">😊</button>
+      <button class="emoji-btn">😂</button>
+      <button class="emoji-btn">❤️</button>
+      <button class="emoji-btn">👍</button>
+      <button class="emoji-btn">🎉</button>
+      <button class="emoji-btn">🌟</button>
+      <button class="emoji-btn">🔥</button>
+      <button class="emoji-btn">💯</button>
+      <button class="emoji-btn">🚀</button>
+      <button class="emoji-btn">🏆</button>
+      <button class="emoji-btn">🎵</button>
+      <button class="emoji-btn">🎨</button>
+      <button class="emoji-btn">📷</button>
+      <button class="emoji-btn">🍕</button>
+      <button class="emoji-btn">🌈</button>
+      <button class="emoji-btn">🦄</button>
+    </div>
+
+    <!-- Correct ruler layout -->
+    <div style="display: flex; justify-content: center">
+      <div>
+        <!-- Top-left empty corner for alignment -->
+        <div style="height: 24px; width: 24px"></div>
+      </div>
+      <div>
+        <!-- Canvas below the horizontal ruler -->
+        <div id="canvas-container">
+          <canvas id="editor"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Image Generator Modal -->
+    <div
+      id="ai-image-modal"
+      style="
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 2000;
+        align-items: center;
+        justify-content: center;
+      "
+    >
+      <div
+        style="
+          background: #fff;
+          padding: 24px;
+          border-radius: 8px;
+          max-width: 400px;
+          margin: auto;
+        "
+      >
+        <h3>Generate AI Image</h3>
+        <label>Keywords (comma separated):</label>
+        <input
+          type="text"
+          id="ai-keywords"
+          style="width: 100%"
+          placeholder="e.g. cat, space, funny"
+        /><br /><br />
+        <label>Size:</label>
+        <select id="ai-size" style="width: 100%">
+          <option value="1024x1024">1024x1024 (Square)</option>
+          <option value="1792x1024">1792x1024 (Landscape)</option>
+          <option value="1024x1792">1024x1792 (Portrait)</option></select
+        ><br /><br />
+        <label>Number of Images:</label>
+        <input
+          type="number"
+          id="ai-num-images"
+          min="1"
+          max="4"
+          value="1"
+          style="width: 100%"
+        /><br /><br />
+        <button id="ai-generate-btn">Generate</button>
+        <button id="ai-cancel-btn" type="button">Cancel</button>
+        <div id="ai-image-loading" style="display: none">Generating...</div>
+        <div
+          id="ai-image-results"
+          style="margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px"
+        ></div>
+      </div>
+    </div>
+
+    <!-- AI Generated Images Side Panel -->
+    <div
+      id="ai-image-sidepanel"
+      style="
+        display: none;
+        position: fixed;
+        top: 80px;
+        right: 0;
+        width: 220px;
+        height: 80vh;
+        background: #fff;
+        border-left: 1px solid #ccc;
+        box-shadow: -2px 0 8px rgba(0, 0, 0, 0.05);
+        overflow-y: auto;
+        z-index: 100;
+      "
+    >
+      <h4 style="margin: 10px">AI Images</h4>
+      <div
+        id="ai-image-sidepanel-list"
+        style="display: flex; flex-direction: column; gap: 10px; padding: 10px"
+      ></div>
+    </div>
+
+    <!-- Layer Sidebar -->
+    <div
+      id="layers-panel"
+      style="
+        position: fixed;
+        left: 0;
+        top: 60px;
+        width: 220px;
+        background: #fff;
+        border-left: 1px solid #ccc;
+        height: 80vh;
+        overflow: auto;
+        z-index: 1000;
+        display: block;
+      "
+    >
+      <div
+        style="padding: 8px; font-weight: bold; border-bottom: 1px solid #eee"
+      >
+        Layers
+      </div>
+      <div id="layers-list"></div>
+    </div>
+    <button id="layers-toggle" title="Toggle Layers Panel">Layers</button>
+
+    <script>
+      // Initialize with default size
+      let canvasWidth = 800;
+      let canvasHeight = 600;
+
+      // Initialize canvas with current dimensions
+      let canvas = new fabric.Canvas("editor", {
+        width: canvasWidth,
+        height: canvasHeight,
+        selection: true,
+        preserveObjectStacking: true,
+      });
+
+      // Canvas size selector functionality
+      document.querySelectorAll(".canvas-size-option").forEach((option) => {
+        option.addEventListener("click", function () {
+          // Update selected class
+          document
+            .querySelectorAll(".canvas-size-option")
+            .forEach((el) => el.classList.remove("selected"));
+          this.classList.add("selected");
+
+          // Get new dimensions
+          canvasWidth = parseInt(this.dataset.width);
+          canvasHeight = parseInt(this.dataset.height);
+
+          // Resize canvas (with confirmation if there's content)
+          if (canvas.getObjects().length > 0) {
+            if (
+              confirm("Changing canvas size will reset your canvas. Continue?")
+            ) {
+              resizeCanvas();
+            } else {
+              // Revert selection if user cancels
+              this.classList.remove("selected");
+              const currentSize = document.querySelector(
+                `.canvas-size-option[data-width="${canvas.width}"][data-height="${canvas.height}"]`
+              );
+              if (currentSize) currentSize.classList.add("selected");
+            }
+          } else {
+            resizeCanvas();
+          }
+        });
+      });
+
+      // Select default size
+      document
+        .querySelector(
+          '.canvas-size-option[data-width="800"][data-height="600"]'
+        )
+        .classList.add("selected");
+
+      function resizeCanvas() {
+        // Save zoom and pan state if needed
+
+        // Recreate canvas with new dimensions
+        canvas.dispose();
+        canvas = new fabric.Canvas("editor", {
+          width: canvasWidth,
+          height: canvasHeight,
+          selection: true,
+          preserveObjectStacking: true,
+        });
+
+        // Reattach event handlers
+        setupCanvasEventHandlers();
+
+        // Reset UI state
+        updateButtonStates();
+      }
+
+      function setupCanvasEventHandlers() {
+        // Update controls when selection changes
+        canvas.on("selection:created", updateControlsFromSelection);
+        canvas.on("selection:updated", updateControlsFromSelection);
+        canvas.on("selection:cleared", clearControlsSelection);
+      }
+
+      // Call initially
+      setupCanvasEventHandlers();
+
+      // Selection tool - sets canvas back to normal selection mode
+      document.getElementById("btn-select").onclick = () => {
+        canvas.isDrawingMode = false;
+        updateButtonStates();
+      };
+
+      // 1) Add editable text
+      document.getElementById("btn-add-text").onclick = () => {
+        const text = new fabric.Textbox("Edit me", {
+          left: 100,
+          top: 100,
+          fontSize: parseInt(document.getElementById("font-size").value),
+          fill: document.getElementById("font-color").value,
+          editable: true,
+          lineHeight: parseFloat(document.getElementById("line-spacing").value),
+          charSpacing: parseInt(document.getElementById("char-spacing").value),
+        });
+        canvas.add(text).setActiveObject(text);
+      };
+
+      // NEW: Shape Picker Toggle
+      document.getElementById("btn-show-shapes").onclick = (e) => {
+        const picker = document.getElementById("shape-picker");
+        if (picker.style.display === "flex") {
+          picker.style.display = "none";
+        } else {
+          picker.style.display = "flex";
+          // Position the picker below the button
+          const btnRect = e.target.getBoundingClientRect();
+          picker.style.top = btnRect.bottom + window.scrollY + 5 + "px";
+          picker.style.left = btnRect.left + window.scrollX + "px";
+          // Hide emoji picker if open
+          document.getElementById("emoji-picker").style.display = "none";
+        }
+      };
+
+      // NEW: Emoji Picker Toggle
+      document.getElementById("btn-show-emojis").onclick = (e) => {
+        const picker = document.getElementById("emoji-picker");
+        if (picker.style.display === "flex") {
+          picker.style.display = "none";
+        } else {
+          picker.style.display = "flex";
+          // Position the picker below the button
+          const btnRect = e.target.getBoundingClientRect();
+          picker.style.top = btnRect.bottom + window.scrollY + 5 + "px";
+          picker.style.left = btnRect.left + window.scrollX + "px";
+          // Hide shape picker if open
+          document.getElementById("shape-picker").style.display = "none";
+        }
+      };
+
+      // NEW: Adding a shape
+      document.querySelectorAll(".shape-btn").forEach((btn) => {
+        btn.onclick = () => {
+          const shapeType = btn.getAttribute("data-shape");
+          const fillColor = document.getElementById("shape-fill-color").value;
+          const strokeColor =
+            document.getElementById("shape-stroke-color").value;
+
+          let shape;
+          const centerX = canvas.width / 2;
+          const centerY = canvas.height / 2;
+
+          switch (shapeType) {
+            case "rect":
+              shape = new fabric.Rect({
+                left: centerX - 50,
+                top: centerY - 50,
+                width: 100,
+                height: 100,
+                fill: fillColor,
+                stroke: strokeColor,
+                strokeWidth: 2,
+              });
+              break;
+            case "circle":
+              shape = new fabric.Circle({
+                left: centerX - 50,
+                top: centerY - 50,
+                radius: 50,
+                fill: fillColor,
+                stroke: strokeColor,
+                strokeWidth: 2,
+              });
+              break;
+            case "triangle":
+              shape = new fabric.Triangle({
+                left: centerX - 50,
+                top: centerY - 50,
+                width: 100,
+                height: 100,
+                fill: fillColor,
+                stroke: strokeColor,
+                strokeWidth: 2,
+              });
+              break;
+            case "line":
+              shape = new fabric.Line(
+                [centerX - 50, centerY, centerX + 50, centerY],
+                {
+                  stroke: strokeColor,
+                  strokeWidth: 4,
+                }
+              );
+              break;
+            case "polygon":
+              // Create hexagon
+              const hexPoints = [];
+              for (let i = 0; i < 6; i++) {
+                const angle = (i * Math.PI) / 3;
+                hexPoints.push({
+                  x: centerX + 50 * Math.cos(angle),
+                  y: centerY + 50 * Math.sin(angle),
+                });
+              }
+              shape = new fabric.Polygon(hexPoints, {
+                fill: fillColor,
+                stroke: strokeColor,
+                strokeWidth: 2,
+              });
+              break;
+            case "star":
+              // Create star
+              const starPoints = [];
+              for (let i = 0; i < 10; i++) {
+                const radius = i % 2 === 0 ? 50 : 25;
+                const angle = (i * Math.PI) / 5;
+                starPoints.push({
+                  x: centerX + radius * Math.cos(angle),
+                  y: centerY + radius * Math.sin(angle),
+                });
+              }
+              shape = new fabric.Polygon(starPoints, {
+                fill: fillColor,
+                stroke: strokeColor,
+                strokeWidth: 2,
+              });
+              break;
+            case "arrow":
+              // Create arrow as a path
+              const path = `M ${centerX - 60} ${centerY} L ${
+                centerX + 40
+              } ${centerY} L ${centerX + 30} ${centerY - 10} M ${
+                centerX + 40
+              } ${centerY} L ${centerX + 30} ${centerY + 10}`;
+              shape = new fabric.Path(path, {
+                fill: "",
+                stroke: strokeColor,
+                strokeWidth: 3,
+              });
+              break;
+            case "heart":
+              // Create heart as a path
+              const heartPath = `M ${centerX} ${centerY + 25} C ${
+                centerX + 40
+              } ${centerY - 30} ${centerX + 70} ${centerY + 25} ${centerX} ${
+                centerY + 70
+              } C ${centerX - 70} ${centerY + 25} ${centerX - 40} ${
+                centerY - 30
+              } ${centerX} ${centerY + 25} z`;
+              shape = new fabric.Path(heartPath, {
+                fill: fillColor,
+                stroke: strokeColor,
+                strokeWidth: 2,
+              });
+              break;
+          }
+
+          if (shape) {
+            canvas.add(shape).setActiveObject(shape);
+          }
+
+          // Hide picker after selection
+          document.getElementById("shape-picker").style.display = "none";
+        };
+      });
+
+      // NEW: Adding an emoji
+      document.querySelectorAll(".emoji-btn").forEach((btn) => {
+        btn.onclick = () => {
+          const emoji = btn.textContent;
+          const centerX = canvas.width / 2;
+          const centerY = canvas.height / 2;
+
+          const text = new fabric.Text(emoji, {
+            left: centerX - 25,
+            top: centerY - 25,
+            fontSize: 50,
+            fill: document.getElementById("font-color").value,
+            selectable: true,
+          });
+
+          canvas.add(text).setActiveObject(text);
+
+          // Hide picker after selection
+          document.getElementById("emoji-picker").style.display = "none";
+        };
+      });
+
+      // Click outside to close pickers
+      document.addEventListener("click", (e) => {
+        if (
+          !e.target.closest("#shape-picker") &&
+          !e.target.closest("#btn-show-shapes")
+        ) {
+          document.getElementById("shape-picker").style.display = "none";
+        }
+        if (
+          !e.target.closest("#emoji-picker") &&
+          !e.target.closest("#btn-show-emojis")
+        ) {
+          document.getElementById("emoji-picker").style.display = "none";
+        }
+      });
+
+      // Group selected objects
+      document.getElementById("btn-group").onclick = () => {
+        if (!canvas.getActiveObject()) {
+          alert("Select multiple objects first");
+          return;
+        }
+        if (canvas.getActiveObject().type !== "activeSelection") {
+          alert("Select multiple objects to group them");
+          return;
+        }
+
+        // Create a group from active selection
+        canvas.getActiveObject().toGroup();
+        canvas.requestRenderAll();
+      };
+
+      // Ungroup selected group
+      document.getElementById("btn-ungroup").onclick = () => {
+        if (!canvas.getActiveObject()) {
+          alert("Select a group first");
+          return;
+        }
+        if (canvas.getActiveObject().type !== "group") {
+          alert("Select a group to ungroup it");
+          return;
+        }
+
+        // Ungroup the active group
+        canvas.getActiveObject().toActiveSelection();
+        canvas.requestRenderAll();
+      };
+
+      // 2) Text styling controls
+      document.getElementById("font-size").onchange = (e) => {
+        const obj = canvas.getActiveObject();
+        if (obj?.set && obj.type.includes("text"))
+          obj.set("fontSize", parseInt(e.target.value));
+        canvas.requestRenderAll();
+      };
+
+      document.getElementById("font-color").onchange = (e) => {
+        const obj = canvas.getActiveObject();
+        if (obj?.set && obj.type.includes("text"))
+          obj.set("fill", e.target.value);
+        canvas.requestRenderAll();
+      };
+
+      // NEW: Shape color controls
+      document.getElementById("shape-fill-color").onchange = (e) => {
+        const obj = canvas.getActiveObject();
+        if (obj?.set && !obj.type.includes("text") && obj.type !== "line") {
+          obj.set("fill", e.target.value);
+          canvas.requestRenderAll();
+        }
+      };
+
+      document.getElementById("shape-stroke-color").onchange = (e) => {
+        const obj = canvas.getActiveObject();
+        if (obj?.set && !obj.type.includes("text")) {
+          obj.set("stroke", e.target.value);
+          canvas.requestRenderAll();
+        }
+      };
+
+      document.getElementById("btn-bold").onclick = () => {
+        const obj = canvas.getActiveObject();
+        if (obj?.set && obj.type.includes("text")) {
+          obj.set("fontWeight", obj.fontWeight === "bold" ? "normal" : "bold");
+          canvas.requestRenderAll();
+        }
+      };
+
+      document.getElementById("btn-italic").onclick = () => {
+        const obj = canvas.getActiveObject();
+        if (obj?.set && obj.type.includes("text")) {
+          obj.set(
+            "fontStyle",
+            obj.fontStyle === "italic" ? "normal" : "italic"
+          );
+          canvas.requestRenderAll();
+        }
+      };
+
+      document.getElementById("btn-underline").onclick = () => {
+        const obj = canvas.getActiveObject();
+        if (obj?.set && obj.type.includes("text")) {
+          obj.set("underline", !obj.underline);
+          canvas.requestRenderAll();
+        }
+      };
+
+      // New: Subscript with toggle
+      document.getElementById("btn-subscript").onclick = () => {
+        const obj = canvas.getActiveObject();
+        if (obj && obj.type === "textbox") {
+          const selStart = obj.selectionStart;
+          const selEnd = obj.selectionEnd;
+          if (selStart === selEnd) return; // No selection
+
+          // Check if first character in selection already has subscript
+          const firstCharStyle =
+            obj.getSelectionStyles(selStart, selStart + 1)[0] || {};
+          const isSubscript =
+            firstCharStyle.deltaY > 0 && firstCharStyle.fontSize < obj.fontSize;
+
+          for (let i = selStart; i < selEnd; i++) {
+            if (isSubscript) {
+              // Remove subscript - revert to normal
+              obj.setSelectionStyles(
+                {
+                  fontSize: obj.fontSize,
+                  deltaY: 0,
+                },
+                i,
+                i + 1
+              );
+            } else {
+              // Apply subscript
+              obj.setSelectionStyles(
+                {
+                  fontSize: obj.fontSize * 0.6,
+                  deltaY: obj.fontSize * 0.3,
+                },
+                i,
+                i + 1
+              );
+            }
+          }
+          canvas.requestRenderAll();
+        }
+      };
+
+      // New: Superscript with toggle
+      document.getElementById("btn-superscript").onclick = () => {
+        const obj = canvas.getActiveObject();
+        if (obj && obj.type === "textbox") {
+          const selStart = obj.selectionStart;
+          const selEnd = obj.selectionEnd;
+          if (selStart === selEnd) return; // No selection
+
+          // Check if first character in selection already has superscript
+          const firstCharStyle =
+            obj.getSelectionStyles(selStart, selStart + 1)[0] || {};
+          const isSuperscript =
+            firstCharStyle.deltaY < 0 && firstCharStyle.fontSize < obj.fontSize;
+
+          for (let i = selStart; i < selEnd; i++) {
+            if (isSuperscript) {
+              // Remove superscript - revert to normal
+              obj.setSelectionStyles(
+                {
+                  fontSize: obj.fontSize,
+                  deltaY: 0,
+                },
+                i,
+                i + 1
+              );
+            } else {
+              // Apply superscript
+              obj.setSelectionStyles(
+                {
+                  fontSize: obj.fontSize * 0.6,
+                  deltaY: -obj.fontSize * 0.3,
+                },
+                i,
+                i + 1
+              );
+            }
+          }
+          canvas.requestRenderAll();
+        }
+      };
+
+      // New: Text Alignment
+      document.getElementById("btn-align-left").onclick = () => {
+        const obj = canvas.getActiveObject();
+        if (obj?.set && obj.type.includes("text")) {
+          obj.set("textAlign", "left");
+          canvas.requestRenderAll();
+        }
+      };
+
+      document.getElementById("btn-align-center").onclick = () => {
+        const obj = canvas.getActiveObject();
+        if (obj?.set && obj.type.includes("text")) {
+          obj.set("textAlign", "center");
+          canvas.requestRenderAll();
+        }
+      };
+
+      document.getElementById("btn-align-right").onclick = () => {
+        const obj = canvas.getActiveObject();
+        if (obj?.set && obj.type.includes("text")) {
+          obj.set("textAlign", "right");
+          canvas.requestRenderAll();
+        }
+      };
+
+      // New: Line Spacing
+      document.getElementById("line-spacing").oninput = (e) => {
+        const obj = canvas.getActiveObject();
+        if (obj?.set && obj.type.includes("text")) {
+          obj.set("lineHeight", parseFloat(e.target.value));
+          canvas.requestRenderAll();
+        }
+      };
+
+      // New: Character Spacing
+      document.getElementById("char-spacing").oninput = (e) => {
+        const obj = canvas.getActiveObject();
+        if (obj?.set && obj.type.includes("text")) {
+          obj.set("charSpacing", parseInt(e.target.value));
+          canvas.requestRenderAll();
+        }
+      };
+
+      // Font family selector
+      document.getElementById("font-family").onchange = (e) => {
+        const obj = canvas.getActiveObject();
+        if (obj?.set && obj.type.includes("text")) {
+          obj.set("fontFamily", e.target.value);
+          canvas.requestRenderAll();
+        }
+      };
+
+      // 3) Load image from file picker
+      document.getElementById("img-loader").onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function (f) {
+          fabric.Image.fromURL(f.target.result, (img) => {
+            // Scale image to fit canvas if needed
+            if (img.width > canvas.width * 0.8) {
+              const scale = (canvas.width * 0.8) / img.width;
+              img.scale(scale);
+            }
+            img.set({
+              left: canvas.width / 2 - (img.width * img.scaleX) / 2,
+              top: canvas.height / 2 - (img.height * img.scaleY) / 2,
+            });
+            canvas.add(img).setActiveObject(img);
+          });
+        };
+        reader.readAsDataURL(file);
+        e.target.value = "";
+      };
+
+      // Replace the existing crop functionality with this improved version
+      document.getElementById("btn-crop").onclick = () => {
+        const obj = canvas.getActiveObject();
+        if (!obj || obj.type !== "image") {
+          alert("Select an image to crop.");
+          return;
+        }
+
+        // Remove any previous crop rect
+        canvas.getObjects("rect").forEach((r) => {
+          if (r._cropRect) canvas.remove(r);
+        });
+
+        // Calculate initial crop rect (centered, 60% of image)
+        const imgLeft = obj.left;
+        const imgTop = obj.top;
+        const imgWidth = obj.width * obj.scaleX;
+        const imgHeight = obj.height * obj.scaleY;
+        const cropWidth = imgWidth * 0.6;
+        const cropHeight = imgHeight * 0.6;
+        const cropLeft = imgLeft + (imgWidth - cropWidth) / 2;
+        const cropTop = imgTop + (imgHeight - cropHeight) / 2;
+
+        // Create crop rectangle overlay
+        const rect = new fabric.Rect({
+          left: cropLeft,
+          top: cropTop,
+          width: cropWidth,
+          height: cropHeight,
+          fill: "rgba(0,0,0,0.15)",
+          stroke: "#f00",
+          strokeWidth: 2,
+          strokeDashArray: [5, 5],
+          selectable: true,
+          hasBorders: true,
+          hasControls: true,
+          _cropRect: true,
+          lockRotation: true,
+          objectCaching: false,
+        });
+        canvas.add(rect).setActiveObject(rect);
+
+        // Show "Apply Crop" button near crop rectangle
+        let cropBtn = document.getElementById("apply-crop-btn");
+        if (!cropBtn) {
+          cropBtn = document.createElement("button");
+          cropBtn.id = "apply-crop-btn";
+          cropBtn.textContent = "Apply Crop";
+          cropBtn.style.position = "absolute";
+          cropBtn.style.zIndex = "100";
+          document.body.appendChild(cropBtn);
+        }
+        cropBtn.style.display = "block";
+
+        // Helper to position the button near the crop rect
+        function positionCropBtn() {
+          const rectCoords = canvas.getAbsoluteCoords(rect);
+          cropBtn.style.left = rectCoords.left + rectCoords.width - 60 + "px";
+          cropBtn.style.top = rectCoords.top - 35 + "px";
+        }
+        // Polyfill for getAbsoluteCoords
+        canvas.getAbsoluteCoords = function (obj) {
+          const bound = obj.getBoundingRect();
+          const canvasRect = canvas.upperCanvasEl.getBoundingClientRect();
+          return {
+            left: canvasRect.left + window.scrollX + bound.left,
+            top: canvasRect.top + window.scrollY + bound.top,
+            width: bound.width,
+            height: bound.height,
+          };
+        };
+        positionCropBtn();
+        canvas.on("object:moving", (e) => {
+          if (e.target === rect) positionCropBtn();
+        });
+        canvas.on("object:scaling", (e) => {
+          if (e.target === rect) positionCropBtn();
+        });
+
+        cropBtn.onclick = () => {
+          // Calculate crop area relative to the image
+          const cropRect = rect.getBoundingRect();
+          const imgRect = obj.getBoundingRect();
+
+          // Clamp crop area within image bounds
+          let left = Math.max(0, cropRect.left - imgRect.left);
+          let top = Math.max(0, cropRect.top - imgRect.top);
+          let width = Math.min(cropRect.width, imgRect.width - left);
+          let height = Math.min(cropRect.height, imgRect.height - top);
+
+          // Convert to image coordinates (not canvas)
+          left = left / obj.scaleX;
+          top = top / obj.scaleY;
+          width = width / obj.scaleX;
+          height = height / obj.scaleY;
+
+          // Get cropped image data
+          const croppedDataUrl = obj.toDataURL({
+            left,
+            top,
+            width,
+            height,
+            format: "png",
+            quality: 1.0,
+            multiplier: 1,
+          });
+
+          fabric.Image.fromURL(
+            croppedDataUrl,
+            (croppedImg) => {
+              // Place cropped image at the crop rect position, scaled to fit crop area
+              croppedImg.set({
+                left: cropRect.left,
+                top: cropRect.top,
+                scaleX: cropRect.width / croppedImg.width,
+                scaleY: cropRect.height / croppedImg.height,
+                originX: "left",
+                originY: "top",
+              });
+              canvas.remove(obj);
+              canvas.remove(rect);
+              canvas.add(croppedImg).setActiveObject(croppedImg);
+              canvas.requestRenderAll();
+              cropBtn.style.display = "none";
+              if (typeof history !== "undefined" && history.saveState)
+                history.saveState();
+            },
+            { crossOrigin: "anonymous" }
+          );
+        };
+      };
+
+      // Replace the existing export functionality
+      document.getElementById("btn-export").onclick = () => {
+        const format = document.getElementById("export-format").value;
+        let dataURL, link;
+
+        // Add quality settings
+        const exportQuality = 1.0; // Max quality
+        const exportMultiplier = 4; // Higher multiplier for better resolution
+
+        if (format === "svg") {
+          // SVG export
+          const svg = canvas.toSVG();
+          const blob = new Blob([svg], { type: "image/svg+xml" });
+          link = document.createElement("a");
+          link.download = "canvas-export.svg";
+          link.href = URL.createObjectURL(blob);
+          link.click();
+          URL.revokeObjectURL(link.href);
+        } else if (format === "pdf") {
+          // PDF export using jsPDF with high quality
+          const pngData = canvas.toDataURL({
+            format: "png",
+            multiplier: exportMultiplier,
+            quality: exportQuality,
+          });
+          const { jsPDF } = window.jspdf;
+          const pdf = new jsPDF({
+            orientation: canvas.width > canvas.height ? "l" : "p",
+            unit: "px",
+            format: [canvas.width, canvas.height],
+            compress: false, // Better quality but larger file
+          });
+          pdf.addImage(pngData, "PNG", 0, 0, canvas.width, canvas.height);
+          pdf.save("canvas-export.pdf");
+        } else {
+          // PNG, JPG, JPEG export with high quality
+          dataURL = canvas.toDataURL({
+            format: format,
+            quality: exportQuality,
+            multiplier: exportMultiplier,
+          });
+          link = document.createElement("a");
+          link.download = `canvas-export.${format}`;
+          link.href = dataURL;
+          link.click();
+        }
+      };
+
+      // Free drawing mode
+      let isDrawing = false;
+      document.getElementById("btn-draw").onclick = () => {
+        isDrawing = !isDrawing;
+        canvas.isDrawingMode = isDrawing;
+        if (isDrawing) {
+          canvas.freeDrawingBrush.width = 3;
+          canvas.freeDrawingBrush.color =
+            document.getElementById("draw-color").value;
+        }
+        updateButtonStates();
+      };
+
+      // Delete selected object
+      document.getElementById("btn-delete").onclick = () => {
+        const obj = canvas.getActiveObject();
+        if (obj) {
+          if (obj.type === "activeSelection") {
+            // Delete all selected objects
+            const selection = obj;
+            selection.getObjects().forEach((o) => canvas.remove(o));
+            canvas.discardActiveObject();
+          } else {
+            canvas.remove(obj);
+          }
+          canvas.requestRenderAll();
+        }
+      };
+
+      // Helper function to update button states
+      function updateButtonStates() {
+        document.getElementById("btn-draw").textContent = canvas.isDrawingMode
+          ? "Stop Drawing"
+          : "Draw";
+        document
+          .getElementById("btn-draw")
+          .classList.toggle("btn-active", canvas.isDrawingMode);
+        document
+          .getElementById("btn-select")
+          .classList.toggle("btn-active", !canvas.isDrawingMode);
+      }
+
+      // Initialize button states
+      updateButtonStates();
+
+      function updateControlsFromSelection() {
+        const obj = canvas.getActiveObject();
+        if (obj && obj.type.includes("text")) {
+          document.getElementById("font-size").value = obj.fontSize || 30;
+          document.getElementById("font-color").value = obj.fill || "#000000";
+          document.getElementById("line-spacing").value = obj.lineHeight || 1.2;
+          document.getElementById("char-spacing").value = obj.charSpacing || 0;
+
+          // Add this line to update the font family selector
+          if (obj.fontFamily) {
+            const fontSelect = document.getElementById("font-family");
+            for (let i = 0; i < fontSelect.options.length; i++) {
+              if (fontSelect.options[i].value === obj.fontFamily) {
+                fontSelect.selectedIndex = i;
+                break;
+              }
+            }
+          }
+
+          // Update shadow controls if exists
+          if (obj.shadow) {
+            document.getElementById("shadow-color").value =
+              obj.shadow.color || "#000000";
+            document.getElementById("shadow-blur").value = obj.shadow.blur || 3;
+            document
+              .getElementById("btn-toggle-shadow")
+              .classList.add("btn-active");
+          } else {
+            document
+              .getElementById("btn-toggle-shadow")
+              .classList.remove("btn-active");
+          }
+
+          // Update border controls
+          document.getElementById("border-width").value = obj.strokeWidth || 0;
+          document.getElementById("border-color").value =
+            obj.stroke || "#000000";
+
+          // Update border style dropdown
+          const borderStyleSelect = document.getElementById("border-style");
+          if (obj.strokeDashArray) {
+            if (obj.strokeDashArray[0] === 8 && obj.strokeDashArray[1] === 4) {
+              borderStyleSelect.value = "dashed";
+            } else if (
+              obj.strokeDashArray[0] === 2 &&
+              obj.strokeDashArray[1] === 2
+            ) {
+              borderStyleSelect.value = "dotted";
+            }
+          } else {
+            borderStyleSelect.value = "solid";
+          }
+        } else if (obj && !obj.type.includes("text")) {
+          // Update shape color controls if a shape is selected
+          if (obj.fill)
+            document.getElementById("shape-fill-color").value = obj.fill;
+          if (obj.stroke)
+            document.getElementById("shape-stroke-color").value = obj.stroke;
+
+          // Update shadow controls if exists
+          if (obj.shadow) {
+            document.getElementById("shadow-color").value = obj.shadow.color;
+            document.getElementById("shadow-blur").value = obj.shadow.blur;
+          }
+
+          // Update border controls
+          document.getElementById("border-width").value = obj.strokeWidth || 0;
+          document.getElementById("border-color").value =
+            obj.stroke || "#000000";
+
+          // Update border style dropdown
+          const borderStyleSelect = document.getElementById("border-style");
+          if (obj.strokeDashArray) {
+            if (obj.strokeDashArray[0] === 8 && obj.strokeDashArray[1] === 4) {
+              borderStyleSelect.value = "dashed";
+            } else if (
+              obj.strokeDashArray[0] === 2 &&
+              obj.strokeDashArray[1] === 2
+            ) {
+              borderStyleSelect.value = "dotted";
+            }
+          } else {
+            borderStyleSelect.value = "solid";
+          }
+        }
+      }
+
+      function clearControlsSelection() {
+        // Reset controls when nothing is selected
+      }
+
+      // Add this after the other control handlers in the script section
+
+      // Shadow controls
+      document.getElementById("shadow-color").onchange = (e) => {
+        const obj = canvas.getActiveObject();
+        if (!obj) return;
+
+        const shadowColor = e.target.value;
+        applyShadow(obj, shadowColor);
+      };
+
+      document.getElementById("shadow-blur").onchange = (e) => {
+        const obj = canvas.getActiveObject();
+        if (!obj) return;
+
+        const blur = parseInt(e.target.value);
+        applyShadow(obj, null, blur);
+      };
+
+      document.getElementById("btn-toggle-shadow").onclick = () => {
+        const obj = canvas.getActiveObject();
+        if (!obj) return;
+
+        if (obj.shadow) {
+          // Remove shadow
+          obj.shadow = null;
+          // Update button appearance to show shadow is off
+          document
+            .getElementById("btn-toggle-shadow")
+            .classList.remove("btn-active");
+        } else {
+          // Add default shadow
+          obj.shadow = new fabric.Shadow({
+            color: document.getElementById("shadow-color").value,
+            blur: parseInt(document.getElementById("shadow-blur").value),
+            offsetX: 2,
+            offsetY: 2,
+          });
+          // Update button appearance to show shadow is on
+          document
+            .getElementById("btn-toggle-shadow")
+            .classList.add("btn-active");
+        }
+
+        canvas.requestRenderAll();
+      };
+
+      // Add this after the border-style handler
+
+      // Border color control
+      document.getElementById("border-color").onchange = (e) => {
+        const obj = canvas.getActiveObject();
+        if (!obj) return;
+
+        obj.set("stroke", e.target.value);
+        canvas.requestRenderAll();
+      };
+
+      // Zoom functionality
+      let zoomLevel = 1;
+      const zoomStep = 0.1;
+      const maxZoom = 5;
+      const minZoom = 0.1;
+
+      // Update zoom display
+      function updateZoomDisplay() {
+        document.getElementById("zoom-level").textContent =
+          Math.round(zoomLevel * 100) + "%";
+      }
+
+      // Set zoom level
+      function setZoomLevel(zoom) {
+        // Limit zoom to min/max values
+        zoomLevel = Math.min(maxZoom, Math.max(minZoom, zoom));
+
+        // Save canvas center point
+        const center = {
+          x: canvas.width / 2,
+          y: canvas.height / 2,
+        };
+
+        // Apply zoom
+        canvas.setZoom(zoomLevel);
+
+        // Update zoom display
+        updateZoomDisplay();
+
+        // Re-center canvas
+        canvas.absolutePan({
+          x: center.x - canvas.width / 2 / zoomLevel,
+          y: center.y - canvas.height / 2 / zoomLevel,
+        });
+
+        canvas.requestRenderAll();
+      }
+
+      // Zoom in
+      document.getElementById("btn-zoom-in").onclick = () => {
+        setZoomLevel(zoomLevel + zoomStep);
+      };
+
+      // Zoom out
+      document.getElementById("btn-zoom-out").onclick = () => {
+        setZoomLevel(zoomLevel - zoomStep);
+      };
+
+      // Reset zoom
+      document.getElementById("btn-zoom-reset").onclick = () => {
+        setZoomLevel(1);
+      };
+
+      // Add mouse wheel zoom support
+      canvas.on("mouse:wheel", function (opt) {
+        if (!opt.e.ctrlKey) return; // Only zoom when Ctrl key is pressed
+
+        opt.e.preventDefault();
+        opt.e.stopPropagation();
+
+        const delta = opt.e.deltaY;
+        let zoom = canvas.getZoom();
+        zoom = zoom - delta / 1000;
+
+        setZoomLevel(zoom);
+      });
+
+      // Initialize zoom display
+      updateZoomDisplay();
+
+      // Add this to the script section, near the end before the closing script tag
+
+      // Undo/Redo functionality
+      const history = {
+        states: [],
+        currentStateIndex: -1,
+        maxStates: 30, // Maximum number of states to store
+
+        // Save current state
+        saveState() {
+          // Get current canvas state as JSON
+          const json = JSON.stringify(canvas.toJSON());
+
+          // If we're not at the end of the history, remove future states
+          if (this.currentStateIndex < this.states.length - 1) {
+            this.states = this.states.slice(0, this.currentStateIndex + 1);
+          }
+
+          // Add new state
+          this.states.push(json);
+          this.currentStateIndex = this.states.length - 1;
+
+          // Remove oldest states if we exceed maxStates
+          if (this.states.length > this.maxStates) {
+            this.states.shift();
+            this.currentStateIndex--;
+          }
+
+          // Update button states
+          this.updateButtons();
+        },
+
+        // Undo to previous state
+        undo() {
+          if (this.currentStateIndex > 0) {
+            this.currentStateIndex--;
+            this.loadState(this.currentStateIndex);
+            this.updateButtons();
+          }
+        },
+
+        // Redo to next state
+        redo() {
+          if (this.currentStateIndex < this.states.length - 1) {
+            this.currentStateIndex++;
+            this.loadState(this.currentStateIndex);
+            this.updateButtons();
+          }
+        },
+
+        // Load state by index
+        loadState(index) {
+          if (index >= 0 && index < this.states.length) {
+            canvas.loadFromJSON(this.states[index], () => {
+              canvas.renderAll();
+            });
+          }
+        },
+
+        // Update undo/redo button states
+        updateButtons() {
+          document.getElementById("btn-undo").disabled =
+            this.currentStateIndex <= 0;
+          document.getElementById("btn-redo").disabled =
+            this.currentStateIndex >= this.states.length - 1;
+        },
+
+        // Initialize history
+        init() {
+          this.saveState(); // Save initial state
+          this.updateButtons();
+        },
+      };
+
+      // Button handlers
+      document.getElementById("btn-undo").onclick = () => history.undo();
+      document.getElementById("btn-redo").onclick = () => history.redo();
+
+      // Keyboard shortcuts for undo/redo
+      document.addEventListener("keydown", function (e) {
+        // Undo: Ctrl+Z
+        if (e.ctrlKey && e.key === "z" && !e.shiftKey) {
+          e.preventDefault();
+          history.undo();
+        }
+
+        // Redo: Ctrl+Y or Ctrl+Shift+Z
+        if (
+          (e.ctrlKey && e.key === "y") ||
+          (e.ctrlKey && e.shiftKey && e.key === "z")
+        ) {
+          e.preventDefault();
+          history.redo();
+        }
+      });
+
+      // Setup canvas event listeners to track changes
+      function setupHistoryTracking() {
+        // Track object modifications
+        canvas.on("object:modified", () => {
+          history.saveState();
+        });
+
+        // Track object additions
+        canvas.on("object:added", () => {
+          // Don't save state when crop rectangle is added or during initialization
+          const obj = canvas.getActiveObject();
+          if (obj && obj._cropRect) return;
+
+          history.saveState();
+        });
+
+        // Track object removals
+        canvas.on("object:removed", () => {
+          history.saveState();
+        });
+      }
+
+      // Initialize history after canvas is set up
+      function initHistory() {
+        setupHistoryTracking();
+        history.init();
+      }
+
+      // Call this after canvas is initialized
+      initHistory();
+
+      // --- AI Image Generation Integration ---
+
+      // Show modal
+      document.getElementById("btn-ai-image").onclick = function () {
+        document.getElementById("ai-image-modal").style.display = "flex";
+        document.getElementById("ai-image-results").innerHTML = "";
+      };
+
+      // Hide modal
+      document.getElementById("ai-cancel-btn").onclick = function () {
+        document.getElementById("ai-image-modal").style.display = "none";
+        document.getElementById("ai-image-loading").style.display = "none";
+        document.getElementById("ai-image-results").innerHTML = "";
+      };
+
+      // Generate images and show in side panel
+      document.getElementById("ai-generate-btn").onclick = async function () {
+        const keywords = document
+          .getElementById("ai-keywords")
+          .value.split(",")
+          .map((k) => k.trim())
+          .filter(Boolean);
+        const size = document.getElementById("ai-size").value;
+        const num_images =
+          parseInt(document.getElementById("ai-num-images").value) || 1;
+
+        if (!keywords.length) {
+          alert("Please enter at least one keyword.");
+          return;
+        }
+
+        document.getElementById("ai-image-loading").style.display = "block";
+        document.getElementById("ai-image-results").innerHTML = "";
+
+        try {
+          const res = await fetch("http://127.0.0.1:5000/v1/generate_images", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ keywords, size, num_images }),
+          });
+          const data = await res.json();
+          document.getElementById("ai-image-loading").style.display = "none";
+
+          // Always show the side panel
+          const sidePanel = document.getElementById("ai-image-sidepanel");
+          const sideList = document.getElementById("ai-image-sidepanel-list");
+          sideList.innerHTML = "";
+          if (data.images && data.images.length) {
+            data.images.forEach((url) => {
+              const img = document.createElement("img");
+              img.src = url;
+              img.style.width = "180px";
+              img.style.height = "auto";
+              img.style.cursor = "pointer";
+              img.title = "Click to add to canvas";
+              img.onclick = function () {
+                // Create a proxied URL
+                const proxiedUrl = `http://127.0.0.1:5000/proxy-image?url=${encodeURIComponent(
+                  url
+                )}`;
+
+                fabric.Image.fromURL(
+                  proxiedUrl,
+                  function (fabImg) {
+                    // Scale the image to fit in canvas while maintaining aspect ratio
+                    const canvasWidth = canvas.width;
+                    const canvasHeight = canvas.height;
+
+                    // Calculate scaling to maintain aspect ratio
+                    const scaleFactor =
+                      Math.min(
+                        canvasWidth / fabImg.width,
+                        canvasHeight / fabImg.height
+                      ) * 0.9; // 90% of canvas size
+
+                    // Position in center
+                    fabImg.set({
+                      left: canvasWidth / 2,
+                      top: canvasHeight / 2,
+                      originX: "center",
+                      originY: "center",
+                      scaleX: scaleFactor,
+                      scaleY: scaleFactor,
+                      selectable: true,
+                      evented: true,
+                      hasControls: true,
+                      hasBorders: true,
+                      lockUniScaling: false,
+                    });
+
+                    // Make sure the canvas is in selection mode
+                    canvas.isDrawingMode = false;
+
+                    // Add the image to canvas
+                    canvas.add(fabImg);
+
+                    // Force selection of the new image
+                    canvas.setActiveObject(fabImg);
+                    canvas.requestRenderAll();
+
+                    // Log success for debugging
+                    console.log("Image added successfully:", fabImg);
+
+                    // Save state in history
+                    if (typeof history !== "undefined" && history.saveState) {
+                      history.saveState();
+                    }
+                  },
+                  { crossOrigin: "anonymous" }
+                );
+              };
+              sideList.appendChild(img);
+            });
+            sidePanel.style.display = "block";
+          } else {
+            sideList.innerHTML = "<div>No images generated.</div>";
+            sidePanel.style.display = "block";
+          }
+
+          // Hide modal after generation
+          document.getElementById("ai-image-modal").style.display = "none";
+          document.getElementById("ai-image-results").innerHTML = "";
+        } catch (err) {
+          document.getElementById("ai-image-loading").style.display = "none";
+          document.getElementById("ai-image-results").innerHTML =
+            "<div style='color:red;'>Error generating images.</div>";
+        }
+      };
+
+      // --- Layer Sidebar with Drag-and-Drop ---
+
+      function getLayerLabel(obj, idx) {
+        if (obj.type === "image") return "Image #" + (idx + 1);
+        if (obj.type === "textbox" || obj.type === "text")
+          return "Text #" + (idx + 1);
+        if (obj.type === "rect") return "Rectangle #" + (idx + 1);
+        if (obj.type === "circle") return "Circle #" + (idx + 1);
+        if (obj.type === "triangle") return "Triangle #" + (idx + 1);
+        if (obj.type === "line") return "Line #" + (idx + 1);
+        return (
+          obj.type.charAt(0).toUpperCase() +
+          obj.type.slice(1) +
+          " #" +
+          (idx + 1)
+        );
+      }
+
+      function updateLayersList() {
+        const layersList = document.getElementById("layers-list");
+        layersList.innerHTML = "";
+        // Fabric.js stacks objects bottom (0) to top (last)
+        const objs = canvas.getObjects();
+        // Show top-most first
+        objs
+          .slice()
+          .reverse()
+          .forEach((obj, i) => {
+            const idx = objs.length - 1 - i;
+            const div = document.createElement("div");
+            div.className =
+              "layer-item" +
+              (canvas.getActiveObject() === obj ? " selected" : "");
+            div.textContent = getLayerLabel(obj, idx);
+            div.setAttribute("draggable", "true");
+            div.style.padding = "6px 8px";
+            div.style.borderBottom = "1px solid #eee";
+            div.style.cursor = "pointer";
+            div.style.background =
+              canvas.getActiveObject() === obj ? "#e0eaff" : "#fff";
+            div.dataset.idx = idx;
+
+            // Select object on click
+            div.onclick = () => {
+              canvas.setActiveObject(obj);
+              canvas.requestRenderAll();
+              updateLayersList();
+            };
+
+            // --- X Button to Delete Layer ---
+            const xBtn = document.createElement("button");
+            xBtn.textContent = "✕";
+            xBtn.title = "Delete Layer";
+            xBtn.style.marginLeft = "8px";
+            xBtn.onclick = (e) => {
+              e.stopPropagation();
+              canvas.remove(obj);
+              updateLayersList();
+              canvas.requestRenderAll();
+              if (typeof history !== "undefined" && history.saveState)
+                history.saveState();
+            };
+            div.appendChild(xBtn);
+
+            // Drag events
+            div.ondragstart = (e) => {
+              e.dataTransfer.setData("layer-idx", idx);
+              div.style.opacity = "0.5";
+            };
+            div.ondragend = (e) => {
+              div.style.opacity = "1";
+            };
+            div.ondragover = (e) => {
+              e.preventDefault();
+              div.style.background = "#f0f0f0";
+            };
+            div.ondragleave = (e) => {
+              div.style.background =
+                canvas.getActiveObject() === obj ? "#e0eaff" : "#fff";
+            };
+            div.ondrop = (e) => {
+              e.preventDefault();
+              div.style.background =
+                canvas.getActiveObject() === obj ? "#e0eaff" : "#fff";
+              const fromIdx = parseInt(e.dataTransfer.getData("layer-idx"));
+              const toIdx = idx;
+              if (fromIdx !== toIdx) {
+                moveLayer(fromIdx, toIdx);
+              }
+            };
+
+            layersList.appendChild(div);
+          });
+      }
+
+      // Move object in canvas stacking order
+      function moveLayer(fromIdx, toIdx) {
+        const objs = canvas.getObjects();
+        const obj = objs[fromIdx];
+        canvas.remove(obj);
+        // Insert at new position
+        if (toIdx === objs.length - 1) {
+          canvas.add(obj); // Top
+        } else {
+          canvas.insertAt(obj, toIdx, false);
+        }
+        canvas.setActiveObject(obj);
+        canvas.requestRenderAll();
+        updateLayersList();
+        if (typeof history !== "undefined" && history.saveState)
+          history.saveState();
+      }
+
+      // Update layers panel when objects change
+      canvas.on("object:added", updateLayersList);
+      canvas.on("object:removed", updateLayersList);
+      canvas.on("object:modified", updateLayersList);
+      canvas.on("selection:created", updateLayersList);
+      canvas.on("selection:updated", updateLayersList);
+      canvas.on("selection:cleared", updateLayersList);
+
+      // Initial render
+      updateLayersList();
+
+      // Optional: Style for selected layer
+      const style = document.createElement("style");
+      style.innerHTML = `
+        .layer-item.selected { background: #e0eaff !important; font-weight: bold; }
+        #layers-panel::-webkit-scrollbar { width: 8px; }
+        #layers-panel { font-size: 14px; }
+        `;
+      document.head.appendChild(style);
+
+      // Add this CSS to your existing style section
+      const layerStyle = document.createElement("style");
+      layerStyle.innerHTML = `
+        #layers-panel {
+          position: fixed;
+          left: -200px; /* Initially hidden */
+          top: 60px;
+          width: 220px;
+          background: #fff;
+          border-right: 1px solid #ccc;
+          height: 80vh;
+          overflow: auto;
+          z-index: 1000;
+          transition: left 0.3s ease-in-out;
+          box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+        }
+
+        #layers-panel.expanded {
+          left: 0; /* Show when expanded */
+        }
+
+        #layers-toggle {
+          position: fixed;
+          left: 0;
+          top: 50%;
+          transform: translateY(-50%);
+          background: #007bff;
+          color: white;
+          border: none;
+          padding: 15px 8px;
+          border-radius: 0 8px 8px 0;
+          cursor: pointer;
+          z-index: 999;
+          font-size: 14px;
+          writing-mode: vertical-rl;
+          text-orientation: mixed;
+          transition: left 0.3s ease-in-out;
+        }
+
+        #layers-toggle.expanded {
+          left: 220px; /* Move with panel */
+        }
+
+        #layers-toggle:hover {
+          background: #0056b3;
+        }
+
+        .layer-item.selected {
+          background: #e0eaff !important;
+          font-weight: bold;
+        }
+
+        #layers-panel::-webkit-scrollbar {
+          width: 8px;
+        }
+
+        #layers
+          font-size: 14px;
+        }
+
+        .layers-header {
+          padding: 12px 8px;
+          font-weight: bold;
+          border-bottom: 1px solid #eee;
+          background: #f8f9fa;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .layers-collapse-btn {
+          background: none;
+          border: none;
+          font-size: 16px;
+          cursor: pointer;
+          padding: 4px;
+          border-radius: 4px;
+        }
+
+        .layers-collapse-btn:hover {
+          background: #e9ecef;
+        }
+      `;
+      document.head.appendChild(layerStyle);
+
+      // Add toggle button to HTML (add this after your existing layers panel)
+      const toggleBtn = document.createElement("button");
+      toggleBtn.id = "layers-toggle";
+      toggleBtn.textContent = "Layers";
+      toggleBtn.title = "Toggle Layers Panel";
+      document.body.appendChild(toggleBtn);
+
+      // Update the layers panel header
+      function updateLayersPanel() {
+        const layersPanel = document.getElementById("layers-panel");
+
+        // Update the header with collapse button
+        const existingHeader = layersPanel.querySelector(".layers-header");
+        if (existingHeader) {
+          existingHeader.remove();
+        }
+
+        const header = document.createElement("div");
+
+        header.className = "layers-header";
+        header.innerHTML = `
+          <span>Layers</span>
+          <button class="layers-collapse-btn" id="layers-collapse-btn" title="Collapse Panel">×</button>
+        `;
+
+        layersPanel.insertBefore(header, layersPanel.firstChild);
+
+        // Collapse button functionality
+        document.getElementById("layers-collapse-btn").onclick = function () {
+          const panel = document.getElementById("layers-panel");
+          const toggle = document.getElementById("layers-toggle");
+
+          if (panel.classList.contains("collapsed")) {
+            // Expand panel
+            panel.classList.remove("collapsed");
+            panel.style.left = "0";
+            toggle.style.left = "220px";
+          } else {
+            // Collapse panel
+            panel.classList.add("collapsed");
+            panel.style.left = "-200px";
+            toggle.style.left = "0";
+          }
+        };
+      }
+
+      // Initial call to updateLayersPanel
+      updateLayersPanel();
+
+      // Background color fill tool
+      document.getElementById("bg-color").onchange = (e) => {
+        canvas.setBackgroundColor(
+          e.target.value,
+          canvas.renderAll.bind(canvas)
+        );
+      };
+
+      // Optionally, set the initial background color
+      canvas.setBackgroundColor(
+        document.getElementById("bg-color").value,
+        canvas.renderAll.bind(canvas)
+      );
+
+      // Warn user before reloading or leaving the page
+      window.addEventListener("beforeunload", function (e) {
+        e.preventDefault();
+        e.returnValue =
+          "Are you sure you want to leave? Unsaved changes may be lost.";
+      });
+    </script>
+  </body>
+</html>
